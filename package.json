@@ -15,5 +15,7 @@
     "server": "nodemon src/main.js",
     "server-debug": "nodemon --inspect-brk src/main.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "lodash": "^4.17.4"
+  }
 }
