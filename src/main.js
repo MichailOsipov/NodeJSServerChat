@@ -43,6 +43,7 @@ io.on('connection', (socket) => {
             currRoom: newRoomName,
             user
         });
+        socket.leave(roomName);
         roomName = newRoomName;
         socket.join(roomName);
         io.sockets.emit('set a room scheme', {roomScheme: roomManager.getRoomsAsObject()});
@@ -54,6 +55,7 @@ io.on('connection', (socket) => {
             currRoom: newRoomName,
             user
         });
+        socket.leave(roomName);
         roomName = newRoomName;
         socket.join(roomName);
         io.sockets.emit('set a room scheme', {roomScheme: roomManager.getRoomsAsObject()});
