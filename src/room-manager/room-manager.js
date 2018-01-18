@@ -23,14 +23,18 @@ class RoomManager {
 
     addUserToRoom({roomName, user}) {
         const currRoom = this.getRoomByName({roomName});
-        currRoom.addUser({user});
+        if (currRoom) {
+            currRoom.addUser({user});
+        }
     }
 
     removeUserFromRoom({roomName, user}) {
         const currRoom = this.getRoomByName({roomName});
-        currRoom.removeUser({user});
-        if (roomName !== MAIN_ROOM_NAME && currRoom.isEmpty()) {
-            this.removeRoom({roomName});
+        if (currRoom) {
+            currRoom.removeUser({user});
+            if (roomName !== MAIN_ROOM_NAME && currRoom.isEmpty()) {
+                this.removeRoom({roomName});
+            }
         }
     }
 

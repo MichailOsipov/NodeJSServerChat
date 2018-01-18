@@ -63,6 +63,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         roomManager.removeUserFromRoom({roomName, user});
+        io.sockets.emit('set a room scheme', {roomScheme: roomManager.getRoomsAsObject()});
     });
 });
 
