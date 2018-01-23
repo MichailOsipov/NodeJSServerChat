@@ -1,9 +1,15 @@
-const {filter, find, map} = require('lodash');
+const {reject, find, map} = require('lodash');
 
 const {Room} = require('./room');
 
+// Дубликат
 const MAIN_ROOM_NAME = 'main';
 
+/*
+ * Да. Здесь в классе больше смысла.
+ * А что если я тебе скажу, что комнат - нет, а есть только пользователи ;)
+ * Хотя можно и так, конечно
+ */
 class RoomManager {
     constructor() {
         this.rooms = [new Room({roomName: MAIN_ROOM_NAME})];
@@ -14,11 +20,11 @@ class RoomManager {
     }
 
     removeRoom({roomName}) {
-        this.rooms = filter(this.rooms, room => room.name !== roomName);
+        this.rooms = reject(this.rooms, {name: roomName});
     }
 
     getRoomByName({roomName}) {
-        return find(this.rooms, room => room.name === roomName);
+        return find(this.rooms, {name: roomName});
     }
 
     addUserToRoom({roomName, user}) {
@@ -43,8 +49,8 @@ class RoomManager {
         this.addUserToRoom({roomName: currRoom, user});
     }
 
-    getRoomsAsObject() {
-        return map(this.rooms, room => room.getRoomAsObject());
+    asObject() {
+        return map(this.rooms, room => room.asObject());
     }
 }
 

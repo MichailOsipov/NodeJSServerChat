@@ -2,6 +2,7 @@ const {MAIN_ROOM_NAME} = require('./room-manager');
 
 let usersCount = 0;
 
+// Название как бы намекает, что здесь много всего. Это какой то аггрегирующий контроллер д.б.
 class SocketManager {
     constructor(socket, io, roomManager) {
         this.socket = socket;
@@ -9,31 +10,38 @@ class SocketManager {
         this.roomManager = roomManager;
         this.roomName = MAIN_ROOM_NAME;
         this.socket.join(this.roomName);
-        this.user = {name: ''};
+        this.user = {name: ''}; // Работа с пользователем - это отдельный модуль
         roomManager.addUserToRoom({
             roomName: this.roomName,
             user: this.user
         });
     }
 
-    // private
+    /**
+     * @private
+     */
     sendNickname() {
         const {socket, user} = this;
         socket.emit('set a nickname', {nickname: user.name});
     }
 
+    /**
+     * @private
+     */
     broadcastRoomScheme() {
         const {io, roomManager} = this;
         io.sockets.emit('set a room scheme', {roomScheme: roomManager.getRoomsAsObject()});
     }
 
+    /**
+     * @private
+     */
     changeSocketRoom(prevRoom, nextRoom) {
         const {socket} = this;
         socket.leave(prevRoom);
         socket.join(nextRoom);
     }
 
-    // public
     subscribe() {
         this.socket.on('ask a nickname', this.sendUniqueNickname.bind(this));
         this.socket.on('set a nickname', this.setNickname.bind(this));
@@ -44,6 +52,7 @@ class SocketManager {
     }
 
     sendUniqueNickname() {
+        // Работа с пользователем - это отдельный модуль
         this.user.name = `user-${usersCount}`;
         usersCount += 1;
         this.sendNickname();
@@ -51,9 +60,10 @@ class SocketManager {
     }
 
     setNickname({nickname}) {
+        // Работа с пользователем - это отдельный модуль
         this.user.name = nickname;
         this.sendNickname();
-        this.broadcastRoomScheme();
+        this.broadcastRoomScheme(); // Повторяется в нескольких местах - требуется HOF или декоратор
     }
 
     sendMessage({text}) {
@@ -69,13 +79,13 @@ class SocketManager {
             currRoom: newRoomName,
             user
         });
-        this.changeSocketRoom(roomName, newRoomName);
+        this.changeSocketRoom(roomName, newRoomName); // 82 и 83 Всегда идут вместе
         this.roomName = newRoomName;
-        this.broadcastRoomScheme();
+        this.broadcastRoomScheme(); // Повторяется в нескольких местах - требуется HOF или декоратор
     }
 
     changeRoom({roomName: newRoomName}) {
-        if (this.roomName === newRoomName) {
+        if (this.roomName === newRoomName) { // Пахнет HOF)
             return;
         }
         const {roomManager, roomName, user} = this;
@@ -84,15 +94,15 @@ class SocketManager {
             currRoom: newRoomName,
             user
         });
-        this.changeSocketRoom(roomName, newRoomName);
+        this.changeSocketRoom(roomName, newRoomName); // 97 и 98 Всегда идут вместе
         this.roomName = newRoomName;
-        this.broadcastRoomScheme();
+        this.broadcastRoomScheme(); // Повторяется в нескольких местах - требуется HOF или декоратор
     }
 
     disconnect() {
         const {roomManager, roomName, user} = this;
         roomManager.removeUserFromRoom({roomName, user});
-        this.broadcastRoomScheme();
+        this.broadcastRoomScheme(); // Повторяется в нескольких местах - требуется HOF или декоратор
     }
 }
 
