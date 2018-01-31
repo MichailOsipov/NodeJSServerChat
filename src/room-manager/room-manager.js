@@ -1,50 +1,62 @@
-const {filter, find, map} = require('lodash');
+const {filter, find, reject} = require('lodash');
+const {generateUniqueId} = require('../utils/generate-unique-id');
+const {MAIN_ROOM_NAME, MAIN_ROOM_ID} = require('./constants');
 
-const {Room} = require('./room');
-
-const MAIN_ROOM_NAME = 'main';
 
 class RoomManager {
     constructor() {
-        this.rooms = [new Room({roomName: MAIN_ROOM_NAME})];
+        this.rooms = [{
+            roomId: MAIN_ROOM_ID,
+            roomName: MAIN_ROOM_NAME
+        }];
+        this.users = [];
     }
 
-    addRoom({roomName}) {
-        this.rooms.push(new Room({roomName}));
+    createRoom({roomName}) {
+        const roomId = generateUniqueId();
+        this.rooms.push({
+            roomName,
+            roomId
+        });
+        return roomId;
     }
 
-    removeRoom({roomName}) {
-        this.rooms = filter(this.rooms, room => room.name !== roomName);
+    removeRoomIfEmpty({roomId}) {
+        if (roomId === MAIN_ROOM_ID) {
+            return;
+        }
+
+        const users = filter(this.users, {roomId});
+        if (users.length) {
+            return;
+        }
+        this.rooms = reject(this.rooms, {roomId});
     }
 
-    getRoomByName({roomName}) {
-        return find(this.rooms, room => room.name === roomName);
+    createUser({userId, nickname}) {
+        this.users.push({userId, nickname, roomId: MAIN_ROOM_ID});
     }
 
-    addUserToRoom({roomName, user}) {
-        const currRoom = this.getRoomByName({roomName});
-        if (currRoom) {
-            currRoom.addUser({user});
+    updateUser({userId, nickname}) {
+        const user = find(this.users, {userId});
+        if (user) {
+            user.nickname = nickname;
         }
     }
 
-    removeUserFromRoom({roomName, user}) {
-        const currRoom = this.getRoomByName({roomName});
-        if (currRoom) {
-            currRoom.removeUser({user});
-            if (roomName !== MAIN_ROOM_NAME && currRoom.isEmpty()) {
-                this.removeRoom({roomName});
-            }
+    removeUser({userId}) {
+        const user = find(this.users, {userId});
+        user.roomId = '';
+        this.removeRoomIfEmpty({roomId: user.roomId});
+    }
+
+    moveUserToRoom({roomId, userId}) {
+        const user = find(this.users, {userId});
+        const oldRoomId = user.roomId;
+        if (user) {
+            user.roomId = roomId;
         }
-    }
-
-    moveUserFromOneRoomToAnother({prevRoom, currRoom, user}) {
-        this.removeUserFromRoom({roomName: prevRoom, user});
-        this.addUserToRoom({roomName: currRoom, user});
-    }
-
-    getRoomsAsObject() {
-        return map(this.rooms, room => room.getRoomAsObject());
+        this.removeRoomIfEmpty({roomId: oldRoomId});
     }
 }
 

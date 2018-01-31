@@ -1,4 +1,5 @@
-const {MAIN_ROOM_NAME} = require('./room-manager');
+const {generateUniqueId} = require('./utils/generate-unique-id');
+const {MAIN_ROOM_ID} = require('./room-manager');
 
 let usersCount = 0;
 
@@ -7,92 +8,118 @@ class SocketManager {
         this.socket = socket;
         this.io = io;
         this.roomManager = roomManager;
-        this.roomName = MAIN_ROOM_NAME;
-        this.socket.join(this.roomName);
-        this.user = {name: ''};
-        roomManager.addUserToRoom({
-            roomName: this.roomName,
-            user: this.user
-        });
+        this.roomId = MAIN_ROOM_ID;
+        this.socket.join(this.roomId);
+        this.userId = generateUniqueId();
+        roomManager.createUser({userId: this.userId, nickname: ''});
     }
 
-    // private
-    sendNickname() {
-        const {socket, user} = this;
-        socket.emit('set a nickname', {nickname: user.name});
+    /**
+    * @private
+    */
+    sendUserId() {
+        const {socket, userId} = this;
+        socket.emit('set a userId', {userId});
     }
 
+    /**
+    * @private
+    */
+    sendNickname({nickname}) {
+        const {socket} = this;
+        socket.emit('set a nickname', {nickname});
+    }
+
+    /**
+    * @private
+    */
     broadcastRoomScheme() {
         const {io, roomManager} = this;
-        io.sockets.emit('set a room scheme', {roomScheme: roomManager.getRoomsAsObject()});
+        const {users, rooms, roomsUsers} = roomManager;
+        io.sockets.emit('set a room scheme', {roomScheme: {rooms, users, roomsUsers}});
     }
 
-    changeSocketRoom(prevRoom, nextRoom) {
-        const {socket} = this;
-        socket.leave(prevRoom);
-        socket.join(nextRoom);
+    /**
+    * @private
+    */
+    changeSocketRoom(nextRoomId) {
+        const {socket, roomId} = this;
+        socket.leave(roomId);
+        socket.join(nextRoomId);
     }
 
-    // public
+    /**
+    * @private
+    */
+    sendUniqueNickname() {
+        const nickname = `user-${usersCount}`;
+        usersCount += 1;
+        this.roomManager.updateUser({userId: this.userId, nickname});
+        this.sendNickname({nickname});
+        this.broadcastRoomScheme();
+    }
+
+    /**
+    * @private
+    */
+    setNickname({nickname}) {
+        this.roomManager.updateUser({userId: this.userId, nickname});
+        this.sendNickname({nickname});
+        this.broadcastRoomScheme();
+    }
+
+    /**
+    * @private
+    */
+    sendMessage({text}) {
+        const {io, roomId, userId} = this;
+        io.to(roomId).emit('broadcast message', {userId, text});
+    }
+
+    /**
+    * @private
+    */
+    createRoom({roomName}) {
+        const {roomManager, roomId, userId} = this;
+        const newRoomId = roomManager.createRoom({roomName});
+        roomManager.moveUserToRoom({
+            roomId: newRoomId,
+            userId
+        });
+        this.changeSocketRoom(roomId, newRoomId);
+        this.broadcastRoomScheme();
+    }
+
+    /**
+    * @private
+    */
+    changeRoom({roomId: newRoomId}) {
+        const {roomManager, roomId, userId} = this;
+        roomManager.moveUserToRoom({
+            roomId: newRoomId,
+            userId
+        });
+        this.changeSocketRoom(roomId, newRoomId);
+        this.broadcastRoomScheme();
+    }
+
+    /**
+    * @private
+    */
+    disconnect() {
+        const {roomManager, userId} = this;
+        roomManager.removeUser({userId});
+        this.broadcastRoomScheme();
+    }
+
     subscribe() {
+        this.socket.on('ask a userId', this.sendUserId.bind(this));
         this.socket.on('ask a nickname', this.sendUniqueNickname.bind(this));
         this.socket.on('set a nickname', this.setNickname.bind(this));
         this.socket.on('send message', this.sendMessage.bind(this));
         this.socket.on('create room', this.createRoom.bind(this));
         this.socket.on('change room', this.changeRoom.bind(this));
         this.socket.on('disconnect', this.disconnect.bind(this));
-    }
-
-    sendUniqueNickname() {
-        this.user.name = `user-${usersCount}`;
-        usersCount += 1;
-        this.sendNickname();
-        this.broadcastRoomScheme();
-    }
-
-    setNickname({nickname}) {
-        this.user.name = nickname;
-        this.sendNickname();
-        this.broadcastRoomScheme();
-    }
-
-    sendMessage({text}) {
-        const {io, roomName, user} = this;
-        io.to(roomName).emit('broadcast message', {author: user.name, text});
-    }
-
-    createRoom({roomName: newRoomName}) {
-        const {roomManager, roomName, user} = this;
-        roomManager.addRoom({roomName: newRoomName});
-        roomManager.moveUserFromOneRoomToAnother({
-            prevRoom: roomName,
-            currRoom: newRoomName,
-            user
-        });
-        this.changeSocketRoom(roomName, newRoomName);
-        this.roomName = newRoomName;
-        this.broadcastRoomScheme();
-    }
-
-    changeRoom({roomName: newRoomName}) {
-        if (this.roomName === newRoomName) {
-            return;
-        }
-        const {roomManager, roomName, user} = this;
-        roomManager.moveUserFromOneRoomToAnother({
-            prevRoom: roomName,
-            currRoom: newRoomName,
-            user
-        });
-        this.changeSocketRoom(roomName, newRoomName);
-        this.roomName = newRoomName;
-        this.broadcastRoomScheme();
-    }
-
-    disconnect() {
-        const {roomManager, roomName, user} = this;
-        roomManager.removeUserFromRoom({roomName, user});
-        this.broadcastRoomScheme();
     }
 }
 
